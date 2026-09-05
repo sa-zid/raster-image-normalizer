@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>রাস্টার ইমেজ নর্মালাইজার</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .split-slider::-webkit-slider-thumb {
+            width: 4px;
+            height: 100%;
+            background-color: #3b82f6;
+            cursor: ew-resize;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+    <!-- হেডার -->
+    <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur p-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent">
+                🖼️ Raster Image Normalizer
+            </h1>
+            <span class="text-xs text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">Python Powered</span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- কন্ট্রোল প্যানেল -->
+        <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 h-fit space-y-6">
+            <!-- ফাইল আপলোড -->
+            <div>
+                <label class="block text-sm font-medium mb-2 text-slate-300">ইমেজ আপলোড করুন</label>
+                <div id="drop-zone" class="border-2 border-dashed border-slate-600 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition">
+                    <input type="file" id="file-input" accept="image/*" class="hidden">
+                    <p class="text-sm text-slate-400">এখানে ছবি ড্র্যাগ অ্যান্ড ড্রপ করুন অথবা <span class="text-blue-400 font-semibold">ব্রাউজ</span> করুন</p>
+                </div>
+            </div>
+
+            <!-- অপশনস -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-slate-300">নর্মালাইজেশন অ্যালগরিদম</label>
+                    <select id="method" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 text-slate-200">
+                        <option value="minmax">Min-Max Contrast Stretch</option>
+                        <option value="percentile">Percentile Clipping (1%-99%)</option>
+                        <option value="zscore">Z-Score Standardization</option>
+                        <option value="histeq">Histogram Equalization</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Target Min</label>
+                        <input type="number" id="target-min" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Target Max</label>
+                        <input type="number" id="target-max" value="255" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200">
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2 pt-2">
+                    <input type="checkbox" id="grayscale" class="rounded bg-slate-900 border-slate-700 text-blue-600">
+                    <label for="grayscale" class="text-sm text-slate-300">গ্রে স্কেল (Grayscale) এ রূপান্তর করুন</label>
+                </div>
+
+                <button id="process-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-blue-600/20">
+                    প্রসেস করুন ⚡
+                </button>
+            </div>
+        </div>
+
+        <!-- প্রিভিউ প্যানেল -->
+        <div class="lg:col-span-2 space-y-6">
+            <div id="image-container" class="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4 min-h-[350px] flex items-center justify-center relative overflow-hidden">
+                <p id="placeholder-text" class="text-slate-500 text-sm">প্রসেস করার জন্য একটি ছবি আপলোড করুন</p>
+                <img id="result-img" class="hidden max-h-[450px] rounded-lg object-contain shadow-2xl" src="" alt="Result">
+            </div>
+
+            <!-- স্ট্যাটিস্টিক্স -->
+            <div id="stats-panel" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl">
+                    <span class="text-xs text-slate-400">অরিজিনাল Min/Max</span>
+                    <p id="orig-minmax" class="text-lg font-bold text-slate-200">-</p>
+                </div>
+                <div class="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl">
+                    <span class="text-xs text-slate-400">নর্মালাইজড Min/Max</span>
+                    <p id="norm-minmax" class="text-lg font-bold text-teal-400">-</p>
+                </div>
+                <div class="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl">
+                    <span class="text-xs text-slate-400">অরিজিনাল Mean</span>
+                    <p id="orig-mean" class="text-lg font-bold text-slate-200">-</p>
+                </div>
+                <div class="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl">
+                    <span class="text-xs text-slate-400">নর্মালাইজড Mean</span>
+                    <p id="norm-mean" class="text-lg font-bold text-teal-400">-</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // আপনার লাইভ ব্যাকএন্ড URL এখানে দিতে হবে (Render/Koyeb থেকে পেয়ে)
+        // লোকাল টেস্টের জন্য: 'http://localhost:8000/api/normalize'
+        const API_URL = 'http://localhost:8000/api/normalize';
+
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+        const processBtn = document.getElementById('process-btn');
+        let selectedFile = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                selectedFile = e.target.files[0];
+                dropZone.querySelector('p').innerText = selectedFile.name;
+            }
+        });
+
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+                alert('অনুগ্রহ করে প্রথমে একটি ছবি সিলেক্ট করুন!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('method', document.getElementById('method').value);
+            formData.append('target_min', document.getElementById('target-min').value);
+            formData.append('target_max', document.getElementById('target-max').value);
+            formData.append('grayscale', document.getElementById('grayscale').checked);
+
+            processBtn.innerText = 'প্রসেসিং হচ্ছে... ⏳';
+            processBtn.disabled = true;
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    document.getElementById('placeholder-text').classList.add('hidden');
+                    const img = document.getElementById('result-img');
+                    img.src = data.image;
+                    img.classList.remove('hidden');
+
+                    // স্ট্যাটস আপডেট
+                    document.getElementById('stats-panel').classList.remove('hidden');
+                    document.getElementById('orig-minmax').innerText = `${data.original_stats.min.toFixed(1)} / ${data.original_stats.max.toFixed(1)}`;
+                    document.getElementById('norm-minmax').innerText = `${data.normalized_stats.min.toFixed(1)} / ${data.normalized_stats.max.toFixed(1)}`;
+                    document.getElementById('orig-mean').innerText = data.original_stats.mean.toFixed(1);
+                    document.getElementById('norm-mean').innerText = data.normalized_stats.mean.toFixed(1);
+                } else {
+                    alert('ত্রুটি ঘটেছে: ' + data.detail);
+                }
+            } catch (err) {
+                alert('সার্ভারে যোগাযোগ করতে সমস্যা হচ্ছে। ব্যাকএন্ড রান আছে তো?');
+                console.error(err);
+            } finally {
+                processBtn.innerText = 'প্রসেস করুন ⚡';
+                processBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
